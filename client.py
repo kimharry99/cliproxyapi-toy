@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import http.client
 import json
 import os
@@ -12,17 +13,25 @@ BASE_URL = "http://127.0.0.1:18317/v1/chat/completions"
 PROXY_URL = urllib.parse.urlsplit(BASE_URL)
 CLIENT_KEY = os.environ.get("CLIPROXY_CLIENT_KEY", "")
 
-MODEL = "gpt-6-luna"
+MODELS = {
+    "gemini": "gemini-3.5-flash-lite",
+    "codex": "gpt-6-luna",
+    "claude": "claude-haiku-5-5",
+}
 TIMEOUT_SECONDS = 180
 
 
 def main() -> int:
     """Load the key and message, send once, then print the assistant reply."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--model", choices=MODELS, default="codex")
+    options = parser.parse_args()
+
     # 1. Read the local proxy key; the proxy handles account authentication.
     client_key = os.environ.get("CLIPROXY_CLIENT_KEY", "")
 
     message = "Hello. Please reply in one sentence."
-    request_body = build_request(message)
+    request_body = build_request(message, MODELS[options.model])
 
     # 2. Let the HTTP library send the header and report transport errors.
     status, raw_body = send_request(client_key, request_body)
@@ -36,11 +45,11 @@ def main() -> int:
     return 0
 
 
-def build_request(message: str) -> bytes:
-    """Encode one nonstreaming request for the fixed model."""
+def build_request(message: str, model: str) -> bytes:
+    """Encode one nonstreaming request for the selected model."""
     return json.dumps(
         {
-            "model": MODEL,
+            "model": model,
             "messages": [{"role": "user", "content": message}],
             "stream": False,
         }
